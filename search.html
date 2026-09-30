@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>世界杯知识库 - 智能搜索</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-elev: #1a1f29;
+    --bg-card: #1e2531;
+    --bg-hover: #252d3b;
+    --border: #2a3344;
+    --text: #e6e9ef;
+    --text-dim: #8b95a7;
+    --text-muted: #5c6678;
+    --accent: #4ade80;
+    --accent-dim: rgba(74, 222, 128, 0.15);
+    --accent-glow: rgba(74, 222, 128, 0.4);
+    --type-concept: #60a5fa;
+    --type-entity: #f472b6;
+    --type-source: #fbbf24;
+    --type-concept-bg: rgba(96, 165, 250, 0.12);
+    --type-entity-bg: rgba(244, 114, 182, 0.12);
+    --type-source-bg: rgba(251, 191, 36, 0.12);
+    --shadow: 0 4px 20px rgba(0,0,0,0.3);
+    --radius: 10px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  ::selection { background: var(--accent-glow); }
+
+  /* 顶部导航 */
+  .topbar {
+    height: 64px;
+    background: linear-gradient(135deg, #161b26 0%, #1a1f2e 100%);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--accent), #22d3ee);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0f1419;
+    font-weight: 900;
+    font-size: 16px;
+  }
+  .logo-text { color: var(--text); }
+  .logo-sub { color: var(--text-muted); font-size: 12px; font-weight: 400; }
+
+  .search-wrap {
+    flex: 1;
+    max-width: 720px;
+    position: relative;
+  }
+  .search-box {
+    width: 100%;
+    height: 42px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 21px;
+    padding: 0 20px 0 44px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: all 0.2s;
+  }
+  .search-box::placeholder { color: var(--text-muted); }
+  .search-box:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+    background: var(--bg-hover);
+  }
+  .search-icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .search-clear {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-hover);
+    border: none;
+    color: var(--text-dim);
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .search-clear.show { display: flex; }
+
+  .topbar-stats {
+    display: flex;
+    gap: 16px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .topbar-stats span b { color: var(--accent); font-weight: 600; }
+
+  /* 主布局 */
+  .layout {
+    display: flex;
+    height: calc(100vh - 64px);
+  }
+  .sidebar {
+    width: 240px;
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    flex-shrink: 0;
+    padding: 16px 0;
+  }
+  .sidebar-section {
+    padding: 0 16px 16px;
+  }
+  .sidebar-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .filter-list { list-style: none; }
+  .filter-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+    user-select: none;
+  }
+  .filter-item:hover { background: var(--bg-hover); color: var(--text); }
+  .filter-item.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .filter-item .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .filter-item .label { flex: 1; }
+  .filter-item .count {
+    background: var(--bg-hover);
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .filter-item.active .count {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .category-list { list-style: none; }
+  .category-item {
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    transition: all 0.15s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .category-item:hover { background: var(--bg-hover); color: var(--text); }
+  .category-item.active { color: var(--accent); }
+  .category-item .num { color: var(--text-muted); font-size: 11px; }
+
+  /* 主内容区 */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 32px;
+  }
+  .main-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .main-title {
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .main-title .count { color: var(--text-muted); font-weight: 400; font-size: 14px; margin-left: 8px; }
+
+  .results { display: flex; flex-direction: column; gap: 10px; }
+  .result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    cursor: pointer;
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-card:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+    transform: translateY(-1px);
+  }
+  .result-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .result-card:hover::before { opacity: 1; }
+  .result-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .badge.concept { background: var(--type-concept-bg); color: var(--type-concept); }
+  .badge.entity { background: var(--type-entity-bg); color: var(--type-entity); }
+  .badge.source { background: var(--type-source-bg); color: var(--type-source); }
+
+  .result-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .result-desc {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .result-meta {
+    display: flex;
+    gap: 14px;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .result-meta .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .result-meta .tag svg { width: 12px; height: 12px; }
+  .related-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .chip {
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .chip:hover { color: var(--accent); border-color: var(--accent); }
+
+  .highlight { background: var(--accent-dim); color: var(--accent); padding: 0 2px; border-radius: 2px; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state .title { font-size: 16px; color: var(--text-dim); margin-bottom: 4px; }
+  .empty-state .sub { font-size: 13px; }
+
+  /* 详情抽屉 */
+  .drawer-mask {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .drawer-mask.show { opacity: 1; pointer-events: auto; }
+  .drawer {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: 560px;
+    max-width: 90vw;
+    background: var(--bg-elev);
+    border-left: 1px solid var(--border);
+    z-index: 100;
+    transform: translateX(100%);
+    transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -8px 0 30px rgba(0,0,0,0.4);
+  }
+  .drawer.show { transform: translateX(0); }
+  .drawer-head {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .drawer-head-info { flex: 1; min-width: 0; }
+  .drawer-title {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    word-break: break-word;
+  }
+  .drawer-meta {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .drawer-close {
+    background: var(--bg-hover);
+    border: none;
+    color: var(--text-dim);
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .drawer-close:hover { background: var(--border); color: var(--text); }
+  .drawer-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 24px;
+  }
+  .drawer-section { margin-bottom: 24px; }
+  .drawer-section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .drawer-section-title::before {
+    content: '';
+    width: 3px; height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .drawer-text {
+    color: var(--text-dim);
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .drawer-body ul {
+    list-style: none;
+    padding: 0;
+  }
+  .drawer-body li {
+    padding: 6px 0;
+    color: var(--text-dim);
+    border-bottom: 1px dashed var(--border);
+  }
+  .drawer-body li:last-child { border-bottom: none; }
+  .link-list { display: flex; flex-direction: column; gap: 6px; }
+  .link-row {
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .link-row:hover { border-color: var(--accent); color: var(--accent); }
+  .link-row .name { flex: 1; }
+  .link-row .type-tag {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 10px;
+  }
+  .stat-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-box .v { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .stat-box .k { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+  /* 关系图模态 */
+  .graph-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+  }
+  .graph-modal.show { display: flex; }
+  .graph-head {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+  }
+  .graph-head .title { font-size: 18px; font-weight: 700; }
+  .graph-head .title small { color: var(--text-muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+  .graph-canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #graphCanvas {
+    position: absolute;
+    inset: 0;
+    cursor: grab;
+  }
+  #graphCanvas:active { cursor: grabbing; }
+  .graph-legend {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    background: rgba(15,20,25,0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 16px;
+    font-size: 12px;
+  }
+  .graph-legend .item { display: flex; align-items: center; gap: 6px; }
+  .graph-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .graph-tip {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: rgba(15,20,25,0.9);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* 工具按钮 */
+  .tool-btns { display: flex; gap: 8px; }
+  .tool-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tool-btn svg { width: 14px; height: 14px; }
+
+  /* 搜索模式切换 */
+  .search-modes {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 3px;
+    flex-shrink: 0;
+  }
+  .mode-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+  }
+  .mode-btn:hover { color: var(--text); background: var(--bg-hover); }
+  .mode-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .mode-btn svg { width: 14px; height: 14px; }
+
+  /* 实体模式下的子分类过滤 */
+  .entity-subfilters {
+    display: none;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .entity-subfilters.show { display: flex; }
+  .subfilter-chip {
+    padding: 5px 12px;
+    border-radius: 16px;
+    background: var(--bg-hover);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .subfilter-chip:hover { color: var(--text); border-color: var(--accent); }
+  .subfilter-chip.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  /* 语义搜索结果中的相似度条 */
+  .similarity-bar {
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .similarity-track {
+    flex: 1;
+    max-width: 120px;
+    height: 4px;
+    background: var(--bg-hover);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .similarity-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--type-concept), var(--accent));
+    border-radius: 2px;
+    transition: width 0.3s;
+  }
+
+  /* 滚动条 */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* 响应式 */
+  @media (max-width: 900px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+    .drawer { width: 100vw; }
+    .topbar-stats { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">W</div>
+    <div>
+      <div class="logo-text">世界杯知识库</div>
+      <div class="logo-sub">LLM Wiki 智能搜索</div>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input id="search" class="search-box" type="text" placeholder="关键词搜索：支持中英文别名、entity:/concept:/source: 前缀语法" autocomplete="off">
+    <button id="clearBtn" class="search-clear" title="清除">×</button>
+  </div>
+  <div class="search-modes" id="searchModes">
+    <button class="mode-btn active" data-mode="keyword">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+      关键词
+    </button>
+    <button class="mode-btn" data-mode="entity">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      实体
+    </button>
+    <button class="mode-btn" data-mode="semantic">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+      语义
+    </button>
+  </div>
+  <div class="topbar-stats" id="topbarStats"></div>
+  <div class="tool-btns">
+    <button class="tool-btn" id="graphBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 7v4M12 11l-5 6M12 11l5 6"/></svg>
+      关系图谱
+    </button>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">类型筛选</div>
+      <ul class="filter-list" id="typeFilter"></ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">分类导航</div>
+      <ul class="category-list" id="categoryList"></ul>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-title">热门引用 Top10</div>
+      <ul class="category-list" id="hotList"></ul>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="main-header">
+      <div class="main-title" id="mainTitle">全部内容<span class="count" id="mainCount"></span></div>
+    </div>
+    <div class="entity-subfilters" id="entitySubfilters"></div>
+    <div class="results" id="results"></div>
+  </main>
+</div>
+
+<!-- 详情抽屉 -->
+<div class="drawer-mask" id="drawerMask"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-head-info">
+      <div class="drawer-title" id="drawerTitle"></div>
+      <div class="drawer-meta" id="drawerMeta"></div>
+    </div>
+    <button class="drawer-close" id="drawerClose" title="关闭">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<!-- 关系图模态 -->
+<div class="graph-modal" id="graphModal">
+  <div class="graph-head">
+    <div class="title">知识关系图谱 <small>节点大小=被引用次数，连线=共同出现</small></div>
+    <button class="drawer-close" id="graphClose">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="graph-canvas-wrap">
+    <canvas id="graphCanvas"></canvas>
+    <div class="graph-tip">鼠标拖拽平移 / 滚轮缩放 / 点击节点查看详情</div>
+    <div class="graph-legend">
+      <div class="item"><span class="dot" style="background:var(--type-concept)"></span>概念</div>
+      <div class="item"><span class="dot" style="background:var(--type-entity)"></span>实体</div>
+      <div class="item"><span class="dot" style="background:var(--type-source)"></span>原始资料</div>
+    </div>
+  </div>
+</div>
+
+<script src="search-data.js"></script>
+<script>
+(function(){
+  'use strict';
+  const DATA = window.WIKI_DATA;
+  if (!DATA) { document.getElementById('results').innerHTML = '<div class="empty-state"><div class="icon">!</div><div class="title">数据加载失败</div><div class="sub">请先运行 node generate-data.js 生成 search-data.js</div></div>'; return; }
+
+  // 合并所有条目便于检索
+  const ALL = []
+    .concat(DATA.concepts.map(x => Object.assign(x, { type: 'concept' })))
+    .concat(DATA.entities.map(x => Object.assign(x, { type: 'entity' })))
+    .concat(DATA.sources.map(x => Object.assign(x, { type: 'source' })));
+
+  // 构建标题 -> 条目 的查找表
+  const byTitle = {};
+  ALL.forEach(item => { byTitle[item.title] = item; });
+
+  // 构建别名 -> 标题 的扩展映射（合并 index 别名表）
+  const aliasMap = {};
+  Object.keys(DATA.aliases || {}).forEach(alias => {
+    const target = DATA.aliases[alias];
+    aliasMap[alias.toLowerCase()] = target;
+  });
+  // 把每个条目的标题也作为自身别名加入
+  ALL.forEach(item => {
+    aliasMap[item.title.toLowerCase()] = item.title;
+  });
+
+  // 状态
+  const state = {
+    keyword: '',
+    mode: 'keyword', // keyword / entity / semantic
+    typeFilter: 'all',
+    categoryFilter: null,
+    entitySubFilter: null, // 实体模式下的子分类（球星/球队/组织）
+    page: 0,
+    pageSize: 50
+  };
+
+  // 实体子分类规则：根据 index.md 的分类目录推断
+  // 球星类：传奇球星、当代球星；球队类：传统强队、美洲球队、欧洲球队、亚洲球队、非洲球队、中北美及加勒比球队、大洋洲球队；组织品牌：赛事组织与品牌
+  const ENTITY_SUBGROUPS = [
+    { key: 'all', label: '全部实体', match: () => true },
+    { key: 'star', label: '球星', match: cat => cat === '传奇球星' || cat === '当代球星' },
+    { key: 'team', label: '球队', match: cat => ['传统强队','美洲球队','欧洲球队','亚洲球队','非洲球队','中北美及加勒比球队','大洋洲球队','其他相关实体'].includes(cat) },
+    { key: 'org', label: '组织与品牌', match: cat => cat === '赛事组织与品牌' }
+  ];
+
+  // 工具函数
+  const $ = id => document.getElementById(id);
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function highlight(text, kw) {
+    if (!kw || !text) return escapeHtml(text);
+    const escaped = escapeHtml(text);
+    const re = new RegExp('(' + kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+    return escaped.replace(re, '<span class="highlight">$1</span>');
+  }
+  // 全角 — 转 -
+  function normalizeDesc(s) {
+    return (s || '').replace(/—/g, '-').trim();
+  }
+
+  // 别名解析：把输入词通过 aliasMap 转为可能的规范标题集合
+  function expandKeyword(kw) {
+    if (!kw) return [];
+    const lower = kw.toLowerCase().trim();
+    const result = [];
+    if (aliasMap[lower]) result.push(aliasMap[lower]);
+    // 模糊匹配别名前缀
+    Object.keys(aliasMap).forEach(a => {
+      if (a.includes(lower) && a !== lower) {
+        if (!result.includes(aliasMap[a])) result.push(aliasMap[a]);
+      }
+    });
+    return result;
+  }
+
+  // 查询语法解析：支持 entity:xxx / concept:xxx / source:xxx 前缀
+  // 返回 { typeFilter, keyword }，typeFilter 为 null 表示不覆盖
+  function parseQuerySyntax(raw) {
+    const m = raw.match(/^(entity|concept|source|type)\s*:\s*(.*)$/i);
+    if (m) {
+      let t = m[1].toLowerCase();
+      if (t === 'type') t = m[2].toLowerCase();
+      else t = t;
+      const rest = m[2] || '';
+      return { typeFilter: t, keyword: rest.trim() };
+    }
+    return { typeFilter: null, keyword: raw.trim() };
+  }
+
+  // ===== 语义/向量检索 =====
+  // 前端分词器，与 generate-data.js 中保持一致
+  const STOP_CHARS_RE = /[\s\n\r\t，。、；：！？“”‘’（）【】《》「」\[\]|·\-—…~`!@#$%^&*()_+=\-{}\|;:'",.<>/?\\0-9]/;
+  function tokenize(text) {
+    if (!text) return [];
+    const tokens = [];
+    const segs = text.split(STOP_CHARS_RE).filter(Boolean);
+    segs.forEach(seg => {
+      if (/^[a-zA-Z]+$/.test(seg)) { tokens.push(seg.toLowerCase()); return; }
+      const chars = Array.from(seg);
+      for (let i = 0; i < chars.length - 1; i++) {
+        if (!STOP_CHARS_RE.test(chars[i]) && !STOP_CHARS_RE.test(chars[i + 1])) {
+          tokens.push(chars[i] + chars[i + 1]);
+        }
+      }
+      chars.forEach(c => { if (!STOP_CHARS_RE.test(c)) tokens.push(c); });
+    });
+    return tokens;
+  }
+  // 构建查询向量的 TF-IDF（用全局词表和 IDF）
+  function buildQueryVector(query) {
+    const tokens = tokenize(query);
+    if (tokens.length === 0) return null;
+    const tf = {};
+    tokens.forEach(t => { tf[t] = (tf[t] || 0) + 1; });
+    const vocab = DATA.vocab;
+    const idf = DATA.idf;
+    const vec = {};
+    let norm = 0;
+    Object.keys(tf).forEach(t => {
+      const idx = vocab.indexOf(t);
+      if (idx === -1) return;
+      const weight = tf[t] * idf[idx];
+      vec[idx] = weight;
+      norm += weight * weight;
+    });
+    norm = Math.sqrt(norm) || 1;
+    Object.keys(vec).forEach(k => { vec[k] = vec[k] / norm; });
+    return vec;
+  }
+  // 余弦相似度：稀疏向量点积（已归一化）
+  function cosineSim(qv, dv) {
+    if (!qv || !dv) return 0;
+    // 让较短的向量做迭代
+    const [a, b] = Object.keys(qv).length < Object.keys(dv).length ? [qv, dv] : [dv, qv];
+    let sum = 0;
+    for (const k in a) {
+      if (b[k]) sum += a[k] * b[k];
+    }
+    return sum;
+  }
+  // 语义检索：对所有条目计算相似度并排序
+  function semanticSearch(query) {
+    const qv = buildQueryVector(query);
+    if (!qv) return [];
+    const scored = ALL.map(item => {
+      const sim = cosineSim(qv, item.tfidf);
+      return { item, sim };
+    }).filter(x => x.sim > 0.01);
+    scored.sort((a, b) => b.sim - a.sim);
+    return scored;
+  }
+
+  // 检索
+  function search() {
+    // 先解析查询语法（前缀）
+    let rawKw = state.keyword;
+    let syntaxType = null;
+    const parsed = parseQuerySyntax(rawKw);
+    if (parsed.typeFilter) { syntaxType = parsed.typeFilter; rawKw = parsed.keyword; }
+    const kw = rawKw.trim().toLowerCase();
+
+    let list = ALL.slice();
+
+    // 类型筛选：优先用查询语法，其次用 UI 类型筛选
+    const effType = syntaxType || state.typeFilter;
+    if (effType && effType !== 'all') {
+      list = list.filter(x => x.type === effType);
+    }
+    // 实体模式：强制只看 entity，并应用子分类
+    if (state.mode === 'entity') {
+      list = list.filter(x => x.type === 'entity');
+      if (state.entitySubFilter && state.entitySubFilter !== 'all') {
+        const sub = ENTITY_SUBGROUPS.find(s => s.key === state.entitySubFilter);
+        if (sub) list = list.filter(x => sub.match(x.category));
+      }
+    }
+    // 分类筛选
+    if (state.categoryFilter) {
+      list = list.filter(x => x.category === state.categoryFilter);
+    }
+
+    if (state.mode === 'semantic' && kw) {
+      // 语义模式：基于查询向量做相似度排序
+      const scored = semanticSearch(rawKw);
+      // 应用类型/分类/实体筛选到 scored
+      const filtered = scored.filter(s => list.includes(s.item));
+      return filtered.map(s => Object.assign({}, s.item, { _sim: s.sim }));
+    }
+
+    if (kw) {
+      const expanded = expandKeyword(kw);
+      list = list.filter(item => {
+        const title = (item.title || '').toLowerCase();
+        const desc = (item.description || item.summary || '').toLowerCase();
+        const keyPoints = (item.keyPoints || '').toLowerCase();
+        const body = (item.body || '').toLowerCase();
+        const keywords = (item.keywords || []).join(' ').toLowerCase();
+        if (title.includes(kw) || desc.includes(kw) || keyPoints.includes(kw) || body.includes(kw) || keywords.includes(kw)) return true;
+        for (let i = 0; i < expanded.length; i++) {
+          if (title === expanded[i].toLowerCase()) return true;
+        }
+        return false;
+      });
+      // 排序：标题匹配优先，再按 refCount / 互动数据
+      list.sort((a, b) => {
+        const aTitle = (a.title || '').toLowerCase();
+        const bTitle = (b.title || '').toLowerCase();
+        const aExact = aTitle === kw || expanded.includes(a.title) ? 0 : 1;
+        const bExact = bTitle === kw || expanded.includes(b.title) ? 0 : 1;
+        if (aExact !== bExact) return aExact - bExact;
+        const aStart = aTitle.startsWith(kw) ? 0 : 1;
+        const bStart = bTitle.startsWith(kw) ? 0 : 1;
+        if (aStart !== bStart) return aStart - bStart;
+        const aScore = (a.refCount || 0) + getInteractionScore(a);
+        const bScore = (b.refCount || 0) + getInteractionScore(b);
+        return bScore - aScore;
+      });
+    } else {
+      list.sort((a, b) => (b.refCount || 0) - (a.refCount || 0));
+    }
+
+    return list;
+  }
+  function getInteractionScore(item) {
+    if (!item.stats) return 0;
+    let s = 0;
+    if (item.stats['点赞']) s += parseInt(item.stats['点赞']) || 0;
+    if (item.stats['收藏']) s += (parseInt(item.stats['收藏']) || 0) * 2;
+    return s / 100;
+  }
+
+  // 渲染结果列表
+  function renderResults() {
+    const list = search();
+    const visible = list.slice(0, (state.page + 1) * state.pageSize);
+    // 显示用关键词（去掉语法前缀后的部分）
+    const parsed = parseQuerySyntax(state.keyword);
+    const kw = (parsed.keyword || '').trim();
+    const resultsEl = $('results');
+
+    // 渲染实体子分类过滤条
+    renderEntitySubfilters();
+
+    // 标题：反映当前搜索模式
+    const modeLabel = { keyword: '关键词搜索', entity: '实体搜索', semantic: '语义搜索' }[state.mode];
+    let titlePrefix = modeLabel;
+    if (state.categoryFilter) titlePrefix = state.categoryFilter;
+    else if (state.typeFilter !== 'all') titlePrefix += ' · ' + typeLabel(state.typeFilter);
+    $('mainTitle').innerHTML = titlePrefix + '<span class="count">' + list.length + ' 条结果</span>';
+
+    if (list.length === 0) {
+      const subHint = state.mode === 'semantic' ? '语义模式需要输入更具体的描述词，试试换一种说法' : '试试其他关键词，或检查类别筛选';
+      resultsEl.innerHTML = '<div class="empty-state"><div class="icon">?</div><div class="title">未找到相关内容</div><div class="sub">' + subHint + '</div></div>';
+      return;
+    }
+
+    const html = visible.map(item => {
+      const title = highlight(item.title, kw);
+      const desc = item.description || item.summary || '';
+      const descText = desc ? highlight(desc.slice(0, 160), kw) : '<span style="color:var(--text-muted)">暂无简介</span>';
+      const meta = [];
+      if (item.category) meta.push('<span class="tag">' + escapeHtml(item.category) + '</span>');
+      if (item.refCount) meta.push('<span class="tag">被引用 ' + item.refCount + '</span>');
+      if (item.stats && item.stats['点赞']) meta.push('<span class="tag">点赞 ' + escapeHtml(item.stats['点赞']) + '</span>');
+      if (item.stats && item.stats['收藏']) meta.push('<span class="tag">收藏 ' + escapeHtml(item.stats['收藏']) + '</span>');
+      const relatedLinks = (item.links || []).slice(0, 5);
+      const chips = relatedLinks.map(l => '<span class="chip" data-link="' + escapeHtml(l) + '">' + escapeHtml(l) + '</span>').join('');
+      // 语义模式：显示相似度条
+      let simBar = '';
+      if (state.mode === 'semantic' && item._sim != null) {
+        const pct = Math.round(item._sim * 100);
+        simBar = '<div class="similarity-bar"><span>相似度 ' + pct + '%</span><div class="similarity-track"><div class="similarity-fill" style="width:' + pct + '%"></div></div></div>';
+      }
+      return '<div class="result-card" data-id="' + escapeHtml(item.id) + '">'
+        + '<div class="result-card-head">'
+        + '<span class="badge ' + item.type + '">' + typeLabel(item.type) + '</span>'
+        + '<span class="result-title">' + title + '</span>'
+        + '</div>'
+        + '<div class="result-desc">' + descText + '</div>'
+        + (meta.length ? '<div class="result-meta">' + meta.join('') + '</div>' : '')
+        + simBar
+        + (chips ? '<div class="related-chips">' + chips + '</div>' : '')
+        + '</div>';
+    }).join('');
+
+    let moreBtn = '';
+    if (visible.length < list.length) {
+      moreBtn = '<div style="text-align:center;padding:16px"><button class="tool-btn" id="loadMore">加载更多 (' + (list.length - visible.length) + ')</button></div>';
+    }
+    resultsEl.innerHTML = html + moreBtn;
+
+    // 绑定点击
+    resultsEl.querySelectorAll('.result-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.classList.contains('chip')) {
+          e.stopPropagation();
+          const link = e.target.getAttribute('data-link');
+          openByTitle(link);
+          return;
+        }
+        const id = card.getAttribute('data-id');
+        // 兼容语义模式下 visible 是合并副本：直接从 ALL 查找原始条目
+        const item = ALL.find(x => x.id === id);
+        if (item) openDetail(item);
+      });
+    });
+    resultsEl.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', e => {
+        e.stopPropagation();
+        const link = chip.getAttribute('data-link');
+        openByTitle(link);
+      });
+    });
+    const loadMore = $('loadMore');
+    if (loadMore) loadMore.addEventListener('click', () => { state.page++; renderResults(); });
+  }
+
+  // 渲染实体模式下的子分类过滤条
+  function renderEntitySubfilters() {
+    const el = $('entitySubfilters');
+    if (state.mode !== 'entity') {
+      el.classList.remove('show');
+      el.innerHTML = '';
+      return;
+    }
+    el.classList.add('show');
+    el.innerHTML = ENTITY_SUBGROUPS.map(g => {
+      const count = DATA.entities.filter(e => g.match(e.category)).length;
+      return '<span class="subfilter-chip ' + (state.entitySubFilter === g.key || (!state.entitySubFilter && g.key === 'all') ? 'active' : '') + '" data-sub="' + g.key + '">' + g.label + ' <span style="color:var(--text-muted)">' + count + '</span></span>';
+    }).join('');
+    el.querySelectorAll('.subfilter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        state.entitySubFilter = chip.getAttribute('data-sub');
+        state.page = 0;
+        renderResults();
+      });
+    });
+  }
+
+  function typeLabel(t) {
+    return { concept: '概念', entity: '实体', source: '资料' }[t] || t;
+  }
+
+  // 通过标题打开详情（处理 wiki 链接）
+  function openByTitle(title) {
+    const clean = title.replace(/\[\[|\]\]/g, '').trim();
+    // 优先精确匹配
+    let item = byTitle[clean];
+    if (!item) {
+      // 通过别名
+      const target = aliasMap[clean.toLowerCase()];
+      if (target) item = byTitle[target];
+    }
+    if (item) {
+      openDetail(item);
+    } else {
+      // 没有对应条目，作为关键词搜索
+      $('search').value = clean;
+      state.keyword = clean;
+      state.page = 0;
+      renderResults();
+    }
+  }
+
+  // 打开详情抽屉
+  function openDetail(item) {
+    $('drawerTitle').textContent = item.title;
+    const meta = [];
+    meta.push('<span class="badge ' + item.type + '">' + typeLabel(item.type) + '</span>');
+    if (item.category) meta.push('<span>' + escapeHtml(item.category) + '</span>');
+    if (item.refCount) meta.push('<span>被引用 ' + item.refCount + ' 次</span>');
+    if (item.file) meta.push('<span style="color:var(--text-muted)">' + escapeHtml(item.file) + '</span>');
+    $('drawerMeta').innerHTML = meta.join('');
+
+    const body = [];
+    // 简介
+    if (item.description || item.summary) {
+      body.push('<div class="drawer-section"><div class="drawer-section-title">简介</div><div class="drawer-text">' + escapeHtml(item.description || item.summary) + '</div></div>');
+    }
+    // 核心要点
+    if (item.keyPoints) {
+      body.push('<div class="drawer-section"><div class="drawer-section-title">关键要点</div><div class="drawer-text">' + escapeHtml(item.keyPoints) + '</div></div>');
+    }
+    // 互动数据
+    if (item.stats && Object.keys(item.stats).length) {
+      const grid = Object.keys(item.stats).map(k => '<div class="stat-box"><div class="v">' + escapeHtml(item.stats[k]) + '</div><div class="k">' + escapeHtml(k) + '</div></div>').join('');
+      body.push('<div class="drawer-section"><div class="drawer-section-title">互动数据</div><div class="stats-grid">' + grid + '</div></div>');
+    }
+    // 关键词
+    if (item.keywords && item.keywords.length) {
+      body.push('<div class="drawer-section"><div class="drawer-section-title">关键词</div><div class="related-chips">' + item.keywords.map(k => '<span class="chip" data-link="' + escapeHtml(k) + '">' + escapeHtml(k) + '</span>').join('') + '</div></div>');
+    }
+    // 相关实体
+    if (item.relatedEntities && item.relatedEntities.length) {
+      body.push(renderLinkList('相关实体', item.relatedEntities));
+    }
+    // 关联概念
+    if (item.relatedConcepts && item.relatedConcepts.length) {
+      body.push(renderLinkList('关联概念', item.relatedConcepts));
+    }
+    // 所有 wiki 链接（去重）
+    const allLinks = (item.links || []).filter((v, i, a) => a.indexOf(v) === i);
+    if (allLinks.length && !item.relatedEntities) {
+      body.push(renderLinkList('Wiki 链接', allLinks));
+    }
+    // 反向引用：哪些 source 引用了这个条目
+    if (item.type === 'concept' || item.type === 'entity') {
+      const backRefs = DATA.sources.filter(s => (s.links || []).includes(item.title));
+      if (backRefs.length) {
+        body.push(renderLinkList('被以下资料引用 (' + backRefs.length + ')', backRefs.map(s => s.title)));
+      }
+    }
+    // 原始正文
+    if (item.body && item.body.trim()) {
+      body.push('<div class="drawer-section"><div class="drawer-section-title">原始正文</div><div class="drawer-text">' + escapeHtml(item.body) + '</div></div>');
+    }
+
+    $('drawerBody').innerHTML = body.join('') || '<div class="empty-state"><div class="sub">该条目暂无详细内容</div></div>';
+
+    // 绑定链接点击
+    $('drawerBody').querySelectorAll('.link-row, .chip').forEach(el => {
+      el.addEventListener('click', () => {
+        const link = el.getAttribute('data-link');
+        if (link) openByTitle(link);
+      });
+    });
+
+    $('drawer').classList.add('show');
+    $('drawerMask').classList.add('show');
+  }
+  function renderLinkList(title, links) {
+    const rows = links.map(l => {
+      const target = byTitle[l] || (aliasMap[l.toLowerCase()] && byTitle[aliasMap[l.toLowerCase()]]);
+      const typeTag = target ? typeLabel(target.type) : '未建';
+      return '<div class="link-row" data-link="' + escapeHtml(l) + '"><span class="name">' + escapeHtml(l) + '</span><span class="type-tag">' + typeTag + '</span></div>';
+    }).join('');
+    return '<div class="drawer-section"><div class="drawer-section-title">' + escapeHtml(title) + '</div><div class="link-list">' + rows + '</div></div>';
+  }
+  function closeDetail() {
+    $('drawer').classList.remove('show');
+    $('drawerMask').classList.remove('show');
+  }
+
+  // 渲染侧边栏
+  function renderSidebar() {
+    // 类型筛选
+    const types = [
+      { key: 'all', label: '全部', color: 'var(--accent)', count: ALL.length },
+      { key: 'concept', label: '概念', color: 'var(--type-concept)', count: DATA.concepts.length },
+      { key: 'entity', label: '实体', color: 'var(--type-entity)', count: DATA.entities.length },
+      { key: 'source', label: '原始资料', color: 'var(--type-source)', count: DATA.sources.length }
+    ];
+    // 实体模式下侧栏类型固定为 entity，并禁用切换；其他模式可自由切换
+    const isEntityMode = state.mode === 'entity';
+    $('typeFilter').innerHTML = types.map(t => {
+      const active = (isEntityMode ? t.key === 'entity' : state.typeFilter === t.key) ? 'active' : '';
+      const disabled = isEntityMode && t.key !== 'entity' ? ' style="opacity:0.4;pointer-events:none"' : '';
+      return '<li class="filter-item ' + active + '" data-type="' + t.key + '"' + disabled + '><span class="dot" style="background:' + t.color + '"></span><span class="label">' + t.label + '</span><span class="count">' + t.count + '</span></li>';
+    }).join('');
+    $('typeFilter').querySelectorAll('.filter-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.getAttribute('data-type');
+        // 实体模式下侧栏类型被锁定，跳过
+        if (state.mode === 'entity') return;
+        state.typeFilter = t;
+        state.categoryFilter = null;
+        state.page = 0;
+        renderSidebar();
+        renderResults();
+      });
+    });
+
+    // 分类导航：根据当前类型列出所有分类
+    const effType = state.mode === 'entity' ? 'entity' : state.typeFilter;
+    const typeMap = { all: ALL, concept: DATA.concepts, entity: DATA.entities, source: DATA.sources };
+    const cur = typeMap[effType] || ALL;
+    const catCount = {};
+    cur.forEach(x => {
+      const c = x.category || (x.type === 'source' ? '原始资料' : '未分类');
+      catCount[c] = (catCount[c] || 0) + 1;
+    });
+    const cats = Object.keys(catCount).sort((a,b) => catCount[b] - catCount[a]);
+    $('categoryList').innerHTML = cats.map(c => '<li class="category-item ' + (state.categoryFilter === c ? 'active' : '') + '" data-cat="' + escapeHtml(c) + '"><span>' + escapeHtml(c) + '</span><span class="num">' + catCount[c] + '</span></li>').join('');
+    $('categoryList').querySelectorAll('.category-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const c = el.getAttribute('data-cat');
+        state.categoryFilter = state.categoryFilter === c ? null : c;
+        state.page = 0;
+        renderSidebar();
+        renderResults();
+      });
+    });
+
+    // 热门引用 Top10
+    const hot = [...DATA.concepts, ...DATA.entities]
+      .sort((a, b) => (b.refCount || 0) - (a.refCount || 0))
+      .slice(0, 10);
+    $('hotList').innerHTML = hot.map(x => '<li class="category-item" data-link="' + escapeHtml(x.title) + '"><span>' + escapeHtml(x.title) + '</span><span class="num">' + (x.refCount || 0) + '</span></li>').join('');
+    $('hotList').querySelectorAll('.category-item').forEach(el => {
+      el.addEventListener('click', () => openByTitle(el.getAttribute('data-link')));
+    });
+
+    // 顶部统计
+    $('topbarStats').innerHTML = '<span>概念 <b>' + DATA.concepts.length + '</b></span><span>实体 <b>' + DATA.entities.length + '</b></span><span>资料 <b>' + DATA.sources.length + '</b></span>';
+  }
+
+  // ===== 关系图谱 =====
+  const graph = {
+    nodes: [],
+    edges: [],
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+    hoverNode: null
+  };
+  function buildGraph() {
+    graph.nodes = [];
+    graph.edges = [];
+    // 节点：只取 concept 和 entity（资料作为隐式连接器不计入节点避免过密）
+    const nodeMap = {};
+    [...DATA.concepts, ...DATA.entities].forEach(x => {
+      const node = {
+        id: x.id,
+        title: x.title,
+        type: x.type,
+        refCount: x.refCount || 0,
+        x: 0, y: 0, vx: 0, vy: 0
+      };
+      nodeMap[x.title] = node;
+      graph.nodes.push(node);
+    });
+    // 边：通过 source 的 links 中两两共现建立（同一条资料中同时出现 = 有关联）
+    const edgeSet = new Set();
+    DATA.sources.forEach(s => {
+      const links = (s.links || []).filter(l => nodeMap[l]);
+      for (let i = 0; i < links.length; i++) {
+        for (let j = i + 1; j < links.length; j++) {
+          const a = links[i], b = links[j];
+          if (a === b) continue;
+          const key = a < b ? a + '|' + b : b + '|' + a;
+          if (!edgeSet.has(key)) {
+            edgeSet.add(key);
+            graph.edges.push({ source: a, target: b });
+          }
+        }
+      }
+    });
+    // 初始位置：圆形分布
+    const n = graph.nodes.length;
+    graph.nodes.forEach((node, i) => {
+      const angle = (i / n) * Math.PI * 2;
+      const r = Math.min(300, n * 8);
+      node.x = Math.cos(angle) * r + (Math.random() - 0.5) * 50;
+      node.y = Math.sin(angle) * r + (Math.random() - 0.5) * 50;
+    });
+  }
+
+  function forceLayout(iterations) {
+    const nodes = graph.nodes;
+    const edges = graph.edges;
+    const W = 800, H = 600;
+    for (let iter = 0; iter < iterations; iter++) {
+      // 斥力
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[j].x - nodes[i].x;
+          const dy = nodes[j].y - nodes[i].y;
+          let dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 1) dist = 1;
+          const force = 800 / (dist * dist);
+          const fx = (dx / dist) * force;
+          const fy = (dy / dist) * force;
+          nodes[i].vx -= fx; nodes[i].vy -= fy;
+          nodes[j].vx += fx; nodes[j].vy += fy;
+        }
+      }
+      // 引力（边）
+      edges.forEach(e => {
+        const a = nodes.find(n => n.title === e.source);
+        const b = nodes.find(n => n.title === e.target);
+        if (!a || !b) return;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 1) dist = 1;
+        const force = (dist - 120) * 0.05;
+        const fx = (dx / dist) * force;
+        const fy = (dy / dist) * force;
+        a.vx += fx; a.vy += fy;
+        b.vx -= fx; b.vy -= fy;
+      });
+      // 中心引力 + 更新位置
+      nodes.forEach(n => {
+        n.vx += -n.x * 0.01;
+        n.vy += -n.y * 0.01;
+        n.vx *= 0.85;
+        n.vy *= 0.85;
+        n.x += n.vx;
+        n.y += n.vy;
+      });
+    }
+  }
+
+  function drawGraph() {
+    const canvas = $('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.translate(w/2 + graph.offsetX, h/2 + graph.offsetY);
+    ctx.scale(graph.scale, graph.scale);
+
+    // 边
+    ctx.strokeStyle = 'rgba(80,100,130,0.25)';
+    ctx.lineWidth = 1 / graph.scale;
+    graph.edges.forEach(e => {
+      const a = graph.nodes.find(n => n.title === e.source);
+      const b = graph.nodes.find(n => n.title === e.target);
+      if (!a || !b) return;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    });
+
+    // 节点
+    graph.nodes.forEach(n => {
+      const r = Math.max(4, Math.min(16, 3 + Math.sqrt(n.refCount) * 1.2));
+      const color = n.type === 'concept' ? '#60a5fa' : '#f472b6';
+      if (graph.hoverNode === n) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 15;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      // 标签：refCount 较大或 hover 时显示
+      if (n.refCount > 5 || graph.hoverNode === n) {
+        ctx.fillStyle = '#e6e9ef';
+        ctx.font = (graph.hoverNode === n ? 'bold ' : '') + '12px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(n.title, n.x, n.y - r - 5);
+      }
+    });
+    ctx.restore();
+  }
+
+  function findNodeAt(mx, my) {
+    // 反向变换坐标
+    const canvas = $('graphCanvas');
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const x = (mx - w/2 - graph.offsetX) / graph.scale;
+    const y = (my - h/2 - graph.offsetY) / graph.scale;
+    for (let i = graph.nodes.length - 1; i >= 0; i--) {
+      const n = graph.nodes[i];
+      const r = Math.max(4, Math.min(16, 3 + Math.sqrt(n.refCount) * 1.2));
+      const dx = x - n.x, dy = y - n.y;
+      if (dx*dx + dy*dy < r*r * 1.5) return n;
+    }
+    return null;
+  }
+
+  function openGraph() {
+    if (graph.nodes.length === 0) buildGraph();
+    forceLayout(100);
+    $('graphModal').classList.add('show');
+    setTimeout(drawGraph, 50);
+  }
+
+  // 事件绑定
+  function bindEvents() {
+    const searchInput = $('search');
+    let timer = null;
+    searchInput.addEventListener('input', () => {
+      state.keyword = searchInput.value;
+      state.page = 0;
+      $('clearBtn').classList.toggle('show', !!state.keyword);
+      clearTimeout(timer);
+      timer = setTimeout(renderResults, 120);
+    });
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { searchInput.value = ''; state.keyword = ''; state.page = 0; $('clearBtn').classList.remove('show'); renderResults(); }
+    });
+    $('clearBtn').addEventListener('click', () => {
+      searchInput.value = ''; state.keyword = ''; state.page = 0;
+      $('clearBtn').classList.remove('show');
+      searchInput.focus();
+      renderResults();
+    });
+
+    // 搜索模式切换
+    $('searchModes').querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        $('searchModes').querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.mode = btn.getAttribute('data-mode');
+        // 切换模式时重置部分状态
+        state.page = 0;
+        if (state.mode === 'entity') {
+          // 进入实体模式自动限定 entity 类型，但保留搜索词
+          state.typeFilter = 'entity';
+          state.entitySubFilter = state.entitySubFilter || 'all';
+        } else if (state.mode === 'keyword') {
+          // 关键词模式不强制类型
+          state.typeFilter = 'all';
+        }
+        // 语义模式保留当前类型筛选，便于"在某类型内做语义搜索"
+        updatePlaceholder();
+        renderSidebar();
+        renderResults();
+      });
+    });
+
+    function updatePlaceholder() {
+      const tips = {
+        keyword: '关键词搜索：支持中英文别名、entity:/concept:/source: 前缀语法',
+        entity: '实体搜索：限定球员/球队/组织品牌，支持中英文别名',
+        semantic: '语义搜索：用自然语言描述，按 TF-IDF 向量余弦相似度排序'
+      };
+      searchInput.placeholder = tips[state.mode] || tips.keyword;
+    }
+
+    $('drawerClose').addEventListener('click', closeDetail);
+    $('drawerMask').addEventListener('click', closeDetail);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        if ($('graphModal').classList.contains('show')) { $('graphModal').classList.remove('show'); }
+        else if ($('drawer').classList.contains('show')) closeDetail();
+      }
+      // 快捷键 / 聚焦搜索
+      if (e.key === '/' && document.activeElement !== searchInput) {
+        e.preventDefault();
+        searchInput.focus();
+      }
+    });
+
+    $('graphBtn').addEventListener('click', openGraph);
+    $('graphClose').addEventListener('click', () => $('graphModal').classList.remove('show'));
+
+    // 图谱交互
+    const canvas = $('graphCanvas');
+    canvas.addEventListener('mousedown', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const node = findNodeAt(mx, my);
+      if (node) {
+        openDetail(node);
+      } else {
+        graph.dragging = true;
+        graph.lastX = e.clientX;
+        graph.lastY = e.clientY;
+      }
+    });
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      if (graph.dragging) {
+        graph.offsetX += e.clientX - graph.lastX;
+        graph.offsetY += e.clientY - graph.lastY;
+        graph.lastX = e.clientX;
+        graph.lastY = e.clientY;
+        drawGraph();
+      } else {
+        const node = findNodeAt(mx, my);
+        if (node !== graph.hoverNode) {
+          graph.hoverNode = node;
+          canvas.style.cursor = node ? 'pointer' : 'grab';
+          drawGraph();
+        }
+      }
+    });
+    canvas.addEventListener('mouseup', () => { graph.dragging = false; });
+    canvas.addEventListener('mouseleave', () => { graph.dragging = false; graph.hoverNode = null; drawGraph(); });
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      graph.scale = Math.max(0.3, Math.min(3, graph.scale * delta));
+      drawGraph();
+    }, { passive: false });
+    window.addEventListener('resize', () => {
+      if ($('graphModal').classList.contains('show')) drawGraph();
+    });
+  }
+
+  // 初始化
+  renderSidebar();
+  renderResults();
+  bindEvents();
+})();
+</script>
+</body>
+</html>
