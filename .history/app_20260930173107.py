@@ -383,20 +383,20 @@ with main_col:
     st.markdown("**💡 示例问题（点击试用）:**")
     example_cols = st.columns(4)
     examples = [
+        "孩子在学校容易跟人打架怎么办？",
         "如何做无意触碰脱敏训练？",
         "社交冲突三选一替代训练具体怎么做？",
         "排队拥挤推人的核心原因是什么？",
     ]
     for c, ex in zip(example_cols, examples):
         if c.button(ex, key=f"ex_{ex}"):
-            st.session_state.run_direct = ex
+            st.session_state.pending_question = ex
 
-    run_question = st.session_state.pop("run_direct", None)
-    if run_question is None:
-        if search_button and question and question.strip():
-            run_question = question.strip()
-        elif pending_question:
-            run_question = pending_question
+    run_question = None
+    if search_button and question and question.strip():
+        run_question = question.strip()
+    elif pending_question:
+        run_question = pending_question
 
     if run_question:
         st.session_state.is_searching = True

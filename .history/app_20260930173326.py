@@ -389,14 +389,13 @@ with main_col:
     ]
     for c, ex in zip(example_cols, examples):
         if c.button(ex, key=f"ex_{ex}"):
-            st.session_state.run_direct = ex
+            st.session_state.pending_question = ex
 
-    run_question = st.session_state.pop("run_direct", None)
-    if run_question is None:
-        if search_button and question and question.strip():
-            run_question = question.strip()
-        elif pending_question:
-            run_question = pending_question
+    run_question = None
+    if search_button and question and question.strip():
+        run_question = question.strip()
+    elif pending_question:
+        run_question = pending_question
 
     if run_question:
         st.session_state.is_searching = True
